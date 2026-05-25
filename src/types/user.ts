@@ -1,4 +1,19 @@
-import type { User } from 'src/generated/prisma/client';
+// Hand-written mirrors of generated Prisma types. We don't re-export the
+// generated types because the v7 client files carry `@ts-nocheck`, which
+// makes typescript-eslint treat them as `any` and triggers no-unsafe-*.
+// Keep these in sync with prisma/schema.prisma manually.
+
+export type Role = 'USER' | 'ADMIN';
+
+export type User = {
+  id: string;
+  email: string;
+  name: string;
+  passwordHash: string;
+  role: Role;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 // Safe to return in API responses — passwordHash stripped.
 export type PublicUser = Omit<User, 'passwordHash'>;

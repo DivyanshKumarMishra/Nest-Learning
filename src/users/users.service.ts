@@ -6,7 +6,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from 'src/generated/prisma/client';
-import type { PublicUser } from 'src/types/user';
+import type { PublicUser, User } from 'src/types/user';
 import type { CreateUserDTO, UpdateUserDTO } from './dto/user.dto';
 
 const BCRYPT_ROUNDS = 10;
@@ -44,6 +44,13 @@ export class UserService {
 
   public getAllUsers(): Promise<PublicUser[]> {
     return this.prisma.user.findMany({ omit: { passwordHash: true } });
+  }
+
+  // Returns the full row INCLUDING passwordHash. Only AuthService should
+  // call this — needed to verify a password at login. Never expose the
+  // return value to the API layer.
+  public findForAuth(email: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { email } });
   }
 
   public async updateUser(id: string, dto: UpdateUserDTO): Promise<PublicUser> {

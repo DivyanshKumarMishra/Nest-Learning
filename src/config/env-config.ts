@@ -42,12 +42,16 @@ import {
   IsEnum,
   IsInt,
   IsString,
-  IsUrl,
+  Matches,
   Max,
   Min,
   MinLength,
   validateSync,
 } from 'class-validator';
+
+// Postgres connection string prefix. We only check the protocol — Prisma
+// will surface any deeper parse errors at first DB call.
+const POSTGRES_URL = /^postgres(ql)?:\/\//;
 
 // EnvSchema — single source of truth for which env vars exist and how they
 // must be shaped. Add a new env var → add a property here with decorators.
@@ -65,18 +69,24 @@ class EnvSchema {
   @Max(65535)
   PORT: number;
 
-  // @IsUrl with explicit protocols — accepts postgres:// and postgresql://
-  // connection strings. require_tld:false because local URLs like
-  // postgres://user:pass@localhost:5432/db have no top-level domain.
-  //
   // DATABASE_URL → pooled connection (Supabase port 6543), used by the
   //                Nest app at runtime via PrismaClient.
   // DIRECT_URL   → direct connection (Supabase port 5432), used by the
   //                Prisma CLI for migrations.
-  @IsUrl({ protocols: ['postgres', 'postgresql'], require_tld: false })
+  //
+  // We use a regex (not @IsUrl) because class-validator's URL check is
+  // overly strict for Postgres connection strings — it rejects perfectly
+  // valid URLs containing URL-encoded passwords, dotted usernames, etc.
+  @IsString()
+  @Matches(POSTGRES_URL, {
+    message: 'DATABASE_URL must start with postgres:// or postgresql://',
+  })
   DATABASE_URL: string;
 
-  @IsUrl({ protocols: ['postgres', 'postgresql'], require_tld: false })
+  @IsString()
+  @Matches(POSTGRES_URL, {
+    message: 'DIRECT_URL must start with postgres:// or postgresql://',
+  })
   DIRECT_URL: string;
 
   // JWT secrets must be long enough to resist brute-forcing. 32 chars is

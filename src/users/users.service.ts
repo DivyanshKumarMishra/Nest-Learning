@@ -46,10 +46,7 @@ export class UserService {
     return this.prisma.user.findMany({ omit: { passwordHash: true } });
   }
 
-  public async updateUser(
-    id: string,
-    dto: UpdateUserDTO,
-  ): Promise<PublicUser> {
+  public async updateUser(id: string, dto: UpdateUserDTO): Promise<PublicUser> {
     const data: Prisma.UserUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.email !== undefined) data.email = dto.email;

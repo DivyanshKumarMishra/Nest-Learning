@@ -9,11 +9,17 @@
  *     @Inject(databaseConfig.KEY)
  *     private readonly db: ConfigType<typeof databaseConfig>,
  *   ) {}
- *   this.db.url;   // string, validated at boot
+ *   this.db.url;        // pooled URL (runtime queries)
+ *   this.db.directUrl;  // direct URL (rarely needed at runtime)
+ *
+ * Note: Prisma reads DATABASE_URL / DIRECT_URL itself via prisma.config.ts —
+ * this Nest-side config is for places where the app needs the URL directly
+ * (e.g. a health-check ping, or a non-Prisma raw client).
  * ========================================================================== */
 
 import { registerAs } from '@nestjs/config';
 
 export default registerAs('database', () => ({
-  url: process.env.DB_URL!,
+  url: process.env.DATABASE_URL!,
+  directUrl: process.env.DIRECT_URL!,
 }));

@@ -1,8 +1,8 @@
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-}
+import type { User } from 'src/generated/prisma/client';
 
-export default User;
+// Safe to return in API responses — passwordHash stripped.
+export type PublicUser = Omit<User, 'passwordHash'>;
+
+// Attached to req.user by AuthGuard. Only the fields a guard / controller
+// needs for authorization decisions — not the full row.
+export type AuthedUser = Pick<User, 'id' | 'email' | 'role'>;

@@ -5,9 +5,11 @@ import { validateEnv } from './config/env-config';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import authConfig from './config/auth.config';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
+    PrismaModule,
     UserModule,
     ConfigModule.forRoot({
       isGlobal: true,

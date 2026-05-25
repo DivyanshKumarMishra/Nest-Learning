@@ -68,8 +68,16 @@ class EnvSchema {
   // @IsUrl with explicit protocols — accepts postgres:// and postgresql://
   // connection strings. require_tld:false because local URLs like
   // postgres://user:pass@localhost:5432/db have no top-level domain.
+  //
+  // DATABASE_URL → pooled connection (Supabase port 6543), used by the
+  //                Nest app at runtime via PrismaClient.
+  // DIRECT_URL   → direct connection (Supabase port 5432), used by the
+  //                Prisma CLI for migrations.
   @IsUrl({ protocols: ['postgres', 'postgresql'], require_tld: false })
-  DB_URL: string;
+  DATABASE_URL: string;
+
+  @IsUrl({ protocols: ['postgres', 'postgresql'], require_tld: false })
+  DIRECT_URL: string;
 
   // JWT secrets must be long enough to resist brute-forcing. 32 chars is
   // the common minimum recommendation for HS256. Refusing short secrets

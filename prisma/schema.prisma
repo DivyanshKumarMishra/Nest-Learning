@@ -1,0 +1,36 @@
+// Prisma schema — source of truth for DB models.
+// Run `npm run db:migrate -- --name <change>` after editing models.
+
+generator client {
+  // prisma-client → new v7 generator (replaces prisma-client-js).
+  // output       → emit inside src/ so the generated code is part of the
+  //                TS project (and tracked by tsconfig). Import paths
+  //                become "src/generated/prisma".
+  // moduleFormat → REQUIRED for Nest. v7 emits ESM by default; Nest's
+  //                CommonJS build fails on ESM imports. cjs makes the
+  //                generated client CommonJS-compatible.
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+// v7: url / directUrl no longer live here. CLI URL is in prisma.config.ts;
+// runtime URL is passed via an adapter in PrismaService.
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

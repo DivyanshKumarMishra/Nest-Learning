@@ -1,41 +1,92 @@
-import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import type User from 'src/types/user';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from 'src/generated/prisma/client';
+import type { PublicUser } from 'src/types/user';
 import type { CreateUserDTO, UpdateUserDTO } from './dto/user.dto';
+
+const BCRYPT_ROUNDS = 10;
 
 @Injectable()
 export class UserService {
-  private users: Map<string, User>;
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor() {
-    this.users = new Map<string, User>();
+  public async createUser(dto: CreateUserDTO): Promise<PublicUser> {
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    try {
+      return await this.prisma.user.create({
+        data: { name: dto.name, email: dto.email, passwordHash },
+        omit: { passwordHash: true },
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        throw new ConflictException('Email already in use');
+      }
+      throw e;
+    }
   }
 
-  public createUser(dto: CreateUserDTO): User {
-    const uid = randomUUID();
-    const user: User = { id: uid, ...dto };
-    this.users.set(uid, user);
+  public async getUser(id: string): Promise<PublicUser> {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      omit: { passwordHash: true },
+    });
+    if (!user) throw new NotFoundException(`User ${id} not found`);
     return user;
   }
 
-  public getUser(id: string): User | undefined {
-    return this.users.get(id);
+  public getAllUsers(): Promise<PublicUser[]> {
+    return this.prisma.user.findMany({ omit: { passwordHash: true } });
   }
 
-  public getAllUsers(): User[] | undefined {
-    return Array.from(this.users.values());
+  public async updateUser(
+    id: string,
+    dto: UpdateUserDTO,
+  ): Promise<PublicUser> {
+    const data: Prisma.UserUpdateInput = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.email !== undefined) data.email = dto.email;
+    if (dto.password !== undefined) {
+      data.passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    }
+    try {
+      return await this.prisma.user.update({
+        where: { id },
+        data,
+        omit: { passwordHash: true },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === 'P2025') {
+          throw new NotFoundException(`User ${id} not found`);
+        }
+        if (e.code === 'P2002') {
+          throw new ConflictException('Email already in use');
+        }
+      }
+      throw e;
+    }
   }
 
-  public updateUser(id: string, dto: UpdateUserDTO): User | undefined {
-    const existing = this.users.get(id);
-    if (!existing) return undefined;
-    const updated: User = { ...existing, ...dto };
-    this.users.set(id, updated);
-    return updated;
-  }
-
-  public deleteUser(id: string): string {
-    this.users.delete(id);
-    return 'User deleted successfully';
+  public async deleteUser(id: string): Promise<{ message: string }> {
+    try {
+      await this.prisma.user.delete({ where: { id } });
+      return { message: 'User deleted successfully' };
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2025'
+      ) {
+        throw new NotFoundException(`User ${id} not found`);
+      }
+      throw e;
+    }
   }
 }

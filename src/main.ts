@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
+import cookieParser from 'cookie-parser';
 import { ApiInterceptor } from './common/interceptors/api.interceptor';
 import { HttpExceptionFilter } from './common/exception-filters/http.exception';
 import { AllExceptionsFilter } from './common/exception-filters/all-exceptions.filter';
@@ -9,6 +10,10 @@ import appConfig from './config/app.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // cookie-parser populates req.cookies from the Cookie header. Required
+  // for JwtAuthGuard to read access_token. Must run before guards.
+  app.use(cookieParser());
 
   // GLOBAL PIPE WIRING
   // useGlobalPipes registers the pipe for every route in the app.

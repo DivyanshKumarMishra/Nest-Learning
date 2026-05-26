@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UserService } from 'src/users/users.service';
@@ -17,6 +22,10 @@ export type JwtPayload = {
 @Injectable()
 export class AuthService {
   constructor(
+    // @Inject(forwardRef(...)) — required because AuthModule and
+    // UserModule are circularly imported (see forwardRef in both modules).
+    // The decorator tells Nest to resolve the token lazily.
+    @Inject(forwardRef(() => UserService))
     private readonly users: UserService,
     private readonly jwt: JwtService,
   ) {}

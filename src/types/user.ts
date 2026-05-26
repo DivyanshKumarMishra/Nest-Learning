@@ -20,4 +20,4 @@ export type PublicUser = Omit<User, 'passwordHash'>;
 
 // Attached to req.user by AuthGuard. Only the fields a guard / controller
 // needs for authorization decisions — not the full row.
-export type AuthedUser = Pick<User, 'id' | 'email' | 'role'>;
+export type AuthUser = Pick<User, 'id' | 'email' | 'role'>;

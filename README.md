@@ -125,6 +125,45 @@ Incoming HTTP request
 - Need to **format an error** → exception filter.
 - Need to act before Nest's routing even resolves → middleware.
 
+### "What goes where" — expanded
+
+The one-sentence test for guards: *"Could a malicious-but-well-formed request still be wrong here?"* If yes, it's a guard. If the request is malformed in the first place, it's a pipe. Full breakdown:
+
+| If your check is about… | Use a… | Concrete examples | Anti-examples (don't put here) |
+|---|---|---|---|
+| **Identity / permission** — *"may this caller access this?"* | **Guard** | JWT verification, API key check, role/permission check (`@Roles('ADMIN')`), feature-flag gates, throttling per-user | DTO field validation, JSON parse errors, response formatting |
+| **Input shape / coercion** — *"is this body well-formed and the right type?"* | **Pipe** | `class-validator` on a DTO, `ParseUUIDPipe`, `ParseIntPipe`, custom transforms (`trim()`, normalize email) | Auth checks ("user must be admin to send this body"), DB lookups, business invariants |
+| **Wrapping the call** — *"do something before AND after the handler runs"* | **Interceptor** | Response envelope (`{ data, meta }`), request/response logging with timing, caching, mapping internal errors to user-friendly ones | Auth (use a guard — runs earlier), response shape that depends on identity (do that in the controller) |
+| **Formatting errors** — *"something threw, shape the response"* | **Exception filter** | Convert Prisma `P2002` → 409 Conflict JSON, consistent error envelope, hide stack traces in prod | Throwing the errors themselves (do that in services), preventing the error (do that earlier — guard/pipe) |
+| **Transport-level plumbing** — *"runs before Nest even resolves the route"* | **Middleware** | `cookie-parser`, `helmet`, `cors`, raw-body capture for webhook signature checks, request ID assignment | Anything that needs DI (use a guard/interceptor — middleware has no DI), anything that needs to know the target handler |
+
+#### Why these aren't interchangeable
+
+- **Guards run before pipes** — a guard can't read a DTO's validated body, because validation hasn't happened yet. If your check needs the validated body, it's not a guard.
+- **Pipes run before the controller** — by the time the controller runs, validation already passed. Don't redo it in the service.
+- **Interceptors wrap the handler** — they're the only piece that sees both *before* and *after* in one place. Logging timing, response shaping → interceptor.
+- **Exception filters run only when something throws** — they're reactive. They can't *prevent* errors, only format them.
+- **Middleware can't access DI** — if your check needs `ConfigService` or a database, it cannot live in middleware. Move it to a guard.
+
+#### The decision flowchart
+
+```
+Does the check need to REJECT a valid-looking request based on WHO is asking?
+  └─ Yes → Guard
+
+Does the check need to ENSURE the data is the right SHAPE/TYPE?
+  └─ Yes → Pipe
+
+Do you need to run logic AROUND the handler (before + after)?
+  └─ Yes → Interceptor
+
+Did something throw, and you want to SHAPE the error response?
+  └─ Yes → Exception filter
+
+Do you need to touch every request at the transport layer, BEFORE Nest's DI even kicks in?
+  └─ Yes → Middleware
+```
+
 ---
 
 ## Nest Module Anatomy
